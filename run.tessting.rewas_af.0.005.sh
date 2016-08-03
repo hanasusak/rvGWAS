@@ -1,7 +1,7 @@
 #!/bin/sh
 
-#$ -e /no_backup/GD/projects/CLL/germ_analysis/scripts/script_out
-#$ -o /no_backup/GD/projects/CLL/germ_analysis/scripts/script_out
+#$ -e /script_out
+#$ -o /script_out
 
 #$ -l h_rt=240:00:00 # time requested
 #$ -l virtual_free=120G # RAM
@@ -12,7 +12,7 @@
 #$ -m abe
 #$ -M hana.susak@crg.eu
 
-centR=/nfs/no_backup/GD/projects/CLL/germ_analysis/scripts/r/germline_risk_tests_v2.R
+centR=/germline_risk_tests_v2.R
 
 export R_MAX_MC_CORES=5
 echo $R_MAX_MC_CORES
@@ -51,8 +51,8 @@ echo $R_CONTROLS_NUM
 export R_PERM_ANSW='y'
 echo $R_PERM_ANSW
 
-MAT='mutations_filtered_samples_fix.txt'
-samp_f='samples_info_pca.txt'
-out='mist_skato_kbac_out2'
+MAT='/QC_output/mutations_filtered_samples_fix.txt'
+samp_f='/QC_output/samples_info_pca.txt'
+out='/mist_skato_kbac_output'
 
 Rscript $centR -m $MAT -d $samp_f -f 0.005 -o $out
