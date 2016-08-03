@@ -22,4 +22,22 @@ For more information how to run this Correct names script type at your terminal:
 ```Shell
 Rscript CorrectGeneNames.R --h
 ```
-As database has restricted access, we recomand to just provide file path and column number in which HUGO gene names are in this file (optional you can print out resuls by setting -v T). This will cause script to get mappings from url link, which is bit slower but is only nessesary to do once.
+As database has restricted access, we recomand to just provide following:
+* file path to multi-sample VCF-like file which was output from QC script
+* column number in which HUGO gene names are in this file 
+* optionally and recommandable for the first time you can print out steps of the script by setting -v T 
+
+This will cause script to get mappings from url link, which is bit slower but is only nessesary to do once.
+
+
+### Performing MiST, SKAT-O and KBAC tests
+Now you are ready to perform tests. Your input files are output files from previous steps:
+* VCF-like file with correcte HUGO names (output from Correct names script)
+* Samples info file with PCA components added (output from QC script)
+
+This script have two modes, ineractive (recomanded for few permutations) or you can send it like a job by configuring run.tessting.rewas_af.0.005.sh  (recomanded for many permutations).
+
+For more information how to run this REWAS testing script type at your terminal:
+```Shell
+Rscript germline_risk_test_v2.R --h
+```
