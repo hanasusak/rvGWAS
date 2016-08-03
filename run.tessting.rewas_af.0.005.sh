@@ -51,8 +51,8 @@ echo $R_CONTROLS_NUM
 export R_PERM_ANSW='y'
 echo $R_PERM_ANSW
 
-MAT='/no_backup/GD/projects/CLL/germ_analysis/data/QC_output/mutations_filtered_samples_fix.txt'
-samp_f='/no_backup/GD/projects/CLL/germ_analysis/data/QC_output/samples_info_pca.txt'
-out='/no_backup/GD/projects/CLL/germ_analysis/temp_hana/mist_skato_kbac_out2'
+MAT='mutations_filtered_samples_fix.txt'
+samp_f='samples_info_pca.txt'
+out='mist_skato_kbac_out2'
 
 Rscript $centR -m $MAT -d $samp_f -f 0.005 -o $out
