@@ -61,3 +61,5 @@ To get help how to obtain this summary files check:
 Rscript summary_table_Nperm_v2.R --h
 ```
 
+# License
+This project is licensed under the terms of the MIT license.
