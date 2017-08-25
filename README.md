@@ -12,7 +12,7 @@ To start you need to perform inital QC check. For that you need at least two inp
 
 For more information how to run this QC script type at your terminal:
 ```Shell
-Rscript QC_and_filtering_multisaple_call_v2.R --h
+Rscript QC_and_filtering_multisaple_call.R --h
 ```
 
 ### HUGO gene names correction
@@ -30,25 +30,25 @@ As database has restricted access, we recomand to just provide following:
 This will cause script to get mappings from url link, which is bit slower but is only nessesary to do once.
 
 
-### Performing MiST, SKAT-O and KBAC tests
+### Performing BURDEN, KBAC, SKAT-O, MiST, and INLA tests
 Now you are ready to perform tests. Your input files are output files from previous steps:
 * VCF-like file with correcte HUGO names (output from Correct names script)
 * Samples info file with PCA components added (output from QC script)
 
 And additional parameters:
-* Allele Frequncy threshold 
+* Allele Frequncy threshold (default 0.01)
 * List of genes you want to test (optional, if not set all genes in your seqence space will be used)
-* Output folder (optional, if not set current directory will be used)
+* Output folder (optional, if not set new folder in current directoy will be created)
 
 Other parameters are also nessesary (CADD damage score threshold, number of permutations, number of samples to be used as controls, etc), but this parameters are asked from user to enter interactivly. 
-This script has two modes, interactive (recomanded for few permutations) or you can send it like a job by configuring bash script simmilar as example.run.tessting.rewas_af.0.005.sh, but with your cluster specifications (recomanded for many permutations).
+This script has two modes, interactive (recomanded if it is a panel of genes and for few permutations) or you can send it like a job by configuring bash script simmilar as run_bash_sim.sh, but with your cluster specifications (recomanded for WES data with a lot of samples or many permutations).
 We would recommand to running it for the first time with one or few permutations to get familliar with nessesary parameters. Then to send it as a job to cluster if nessesary (and you have enough cases compared to controls), and run it for 100 or more perutations. 
 
 Reason to run many permutations is to ensure that you are filtering out frequent population specific SNPs or indels (not present at high frequency at EVS of 1000 genome project) if you have more then enough controls (controls have to be well mached to cases and good representation of population, no much mixture). If you would calculate AF on whole set of controls and filter based on this AF, you would bias your results as you would use same contorls samples for estimating AF and for testing in variant associaition tests.  
 
 For more information how to run this REWAS testing script type at your terminal:
 ```Shell
-Rscript germline_risk_test_v2.R --h
+Rscript RVAS_tests_prec.R --h
 ```
 
 After running this script you will have results of the mentioned tests.
