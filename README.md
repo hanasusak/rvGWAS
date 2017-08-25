@@ -54,5 +54,12 @@ Rscript germline_risk_test_v2.R --h
 After running this script you will have results of the mentioned tests.
 
 ### Merging results for N permutation
+We also provide script to get summary information when you perfom a lot of permutations.
+To get help how to obtain this summary files check:
 
-### Merging results for 1 permutation and N permutations
+```Shell
+Rscript summary_table_Nperm_v2.R --h
+```
+
+# License
+This project is licensed under the terms of the MIT license.
