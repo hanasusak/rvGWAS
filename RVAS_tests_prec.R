@@ -21,6 +21,7 @@ suppressPackageStartupMessages(library(SKAT))
 suppressPackageStartupMessages(library(KBAC,lib.loc="/software/xe/el6.3/R_libs"))
 suppressPackageStartupMessages(library(parallel))
 suppressPackageStartupMessages(library(INLA, lib.loc='/software/xe/el6.3/R_libs/INLA_updated'))
+suppressPackageStartupMessages(library(BMRV))
 
 parser <- ArgumentParser()
 
@@ -39,31 +40,23 @@ if (read.from=='bash'){
    mc <- as.integer(Sys.getenv("R_MAX_MC_CORES", 1L))    
    seed <- as.integer(Sys.getenv("R_SEED", 160185L)) 
    set.seed(seed)
-   INLA_log <- as.logical(Sys.getenv("R_INLA", 'T'))
    MIST_log <- as.logical(Sys.getenv("R_MIST", 'T')) 
    KBAC_log <- as.logical(Sys.getenv("R_KBAC", 'T')) 
    SKATO_log <- as.logical(Sys.getenv("R_SKATO", 'T')) 
    BURDEN_log <- as.logical(Sys.getenv("R_BURDEN", 'T')) 
+   BATI_log <- as.logical(Sys.getenv("R_BATI", 'T'))
+   BMRV_log <- as.logical(Sys.getenv("R_BMRV", 'T'))
+   
    maf.log <- as.logical(Sys.getenv("MAF_LOGICAL", 'F')) 
    h.step <- as.numeric(Sys.getenv("H_STEP", 1e-3)) 
+   save.model <- as.logical(Sys.getenv("R_BATI_SAVE", 'F')) 
 } else if (read.from == 'stdin'){ 
    cat("\nEnter a number of cores available: ")
    mc <- scan(read.from,what=integer(),nmax=1,quiet=TRUE, nlines=1)
    cat("\nEnter a seed for random slecting of control samples: ")
    seed <- scan(read.from,what=integer(),nmax=1,quiet=TRUE, nlines=1)
    set.seed(seed)
-   cat("\nDo you want to run INLA (T for yes, F for no): ")
-   INLA_log <- scan(read.from,what=logical(),nmax=1,quiet=TRUE, nlines=1)
-   cat("\nDo you want to run MiST (T for yes, F for no): ")
-   if (INLA_log ){
-      cat("\nDo you want to use maf as variable for mutations, transformed wiht beta dist.(T for yes, F for no): ")
-      maf.log <-  scan(read.from,what=logical(),nmax=1,quiet=TRUE, nlines=1)
-      cat("\nWhat h step for inla you want ot use ? (default 0.001)")
-      h.step <- scan(read.from,what=numeric(),nmax=1,quiet=TRUE, nlines=1)
-      if(length(h.step)==0){
-         h.step<-1e-3
-      }
-   }
+  
    MIST_log <- scan(read.from,what=logical(),nmax=1,quiet=TRUE, nlines=1)
    cat("\nDo you want to run KBAC (T for yes, F for no): ")
    KBAC_log <- scan(read.from,what=logical(),nmax=1,quiet=TRUE, nlines=1)
@@ -71,24 +64,45 @@ if (read.from=='bash'){
    SKATO_log <- scan(read.from,what=logical(),nmax=1,quiet=TRUE, nlines=1) 
    cat("\nDo you want to run BURDEN (T for yes, F for no): ")
    BURDEN_log <- scan(read.from,what=logical(),nmax=1,quiet=TRUE, nlines=1) 
+   cat("\nDo you want to run BATI (T for yes, F for no): ")
+   BATI_log <- scan(read.from,what=logical(),nmax=1,quiet=TRUE, nlines=1)
+   cat("\nDo you want to run MiST (T for yes, F for no): ")
+   if (BATI_log ){
+      cat("\nDo you want to use maf as variable for mutations, transformed wit beta dist.(T for yes, F for no): ")
+      maf.log <-  scan(read.from,what=logical(),nmax=1,quiet=TRUE, nlines=1)
+      cat("\nWhat h step for INLA you want ot use ? (default 0.001)")
+      h.step <- scan(read.from,what=numeric(),nmax=1,quiet=TRUE, nlines=1)
+      if(length(h.step)==0){
+         h.step<-1e-3
+      }
+      cat("\nDo you want to save BATI models (as R objects) (T for yes, F for no):")
+      save.model <-scan(read.from,what=logical(),nmax=1,quiet=TRUE, nlines=1)
+   }
+   cat("\nDo you want to run BMRV (T for yes, F for no): ")
+   BMRV_log <- scan(read.from,what=logical(),nmax=1,quiet=TRUE, nlines=1) 
+ 
 } else {
    mc <- as.integer(1L) 
    seed <- as.integer(160185L) 
    set.seed(seed)
-   INLA_log <- T
+   
    MIST_log <- T
    KBAC_log <- T
    SKATO_log <- T
    BURDEN_log <- T
+   BATI_log <- T
+   BMRV_log <- T
    maf.log <- F
    h.step<-1e-3
+   save.model <- F
 }
 
 cat("\nNumber of cores useing", mc, " .....\n" )
 cat("\nSeed set to", seed, "..... \n" )
-cat(paste0("Tests to be performed: ", paste(c('INLA','MiST','KBAC','SKAT-O', 'BURDEN')[c(INLA_log,MIST_log,KBAC_log,SKATO_log, BURDEN_log)], collapse=", ")), "\n")
-cat(paste0("INLA maf as variable: ", maf.log, "\n"))
-cat(paste0("INLA h step: ", h.step, "\n"))
+cat(paste0("Tests to be performed: ", paste(c('MiST','KBAC','SKAT-O', 'BURDEN','BATI', 'BMRV')[c(MIST_log,KBAC_log,SKATO_log,BURDEN_log,BATI_log,BMRV_log)], collapse=", ")), "\n")
+cat(paste0("BATI maf as variable: ", maf.log, "\n"))
+cat(paste0("BATI h step: ", h.step, "\n"))
+cat(paste0("BATI save model: ", save.model, "\n"))
 
 ######################################################################################
 # read arguments
@@ -146,6 +160,12 @@ if(FALSE){
    genes.file <- NULL
    out.folder <- '/users/so/hsusak/' 
    
+   mutation.file <- '/nfs/no_backup/GD/projects/RVAS/AR1/mut_data/simulation_1.txt'
+   samples.info.file <- '/nfs/no_backup/GD/projects/RVAS/AR1/samp_data/samples_info_sim_1.txt'
+   af.thr <- 0.01
+   genes.file <- NULL
+   out.folder <- '/users/so/hsusak/' 
+   
 }
 
 rm(parser)
@@ -183,10 +203,10 @@ cat('---------------------------------------------------------------------------
 cat(paste0("Number of cores: ", mc), file=logFile, append=TRUE, sep = "\n")
 cat(paste0("Seed: ", seed), file=logFile, append=TRUE, sep = "\n")
 
-cat(paste0("Tests to be performed: ", paste(c('MiST','KBAC','SKAT-O', 'BURDEN', 'INLA')[c(MIST_log,KBAC_log,SKATO_log, BURDEN_log, INLA_log)], collapse=", ")),
+cat(paste0("Tests to be performed: ", paste(c('MiST','KBAC','SKAT-O', 'BURDEN', 'BATI', 'BMRV')[c(MIST_log,KBAC_log,SKATO_log, BURDEN_log, BATI_log, BMRV_log)], collapse=", ")),
     file=logFile, append=TRUE, sep = "\n")
-cat(paste0("INLA maf as variable: ", maf.log),  file=logFile, append=TRUE, sep = "\n")
-cat(paste0("INLA h step: ", h.step),  file=logFile, append=TRUE, sep = "\n")
+cat(paste0("BATI maf as variable: ", maf.log),  file=logFile, append=TRUE, sep = "\n")
+cat(paste0("BATI h step: ", h.step),  file=logFile, append=TRUE, sep = "\n")
 
 cat(paste0("Mutations file: ", mutation.file), file=logFile, append=TRUE, sep = "\n")
 cat(paste0("Samples info file: ", samples.info.file), file=logFile, append=TRUE, sep = "\n")
@@ -198,8 +218,120 @@ cat(paste0("Out folder: ", out.folder), file=logFile, append=TRUE, sep = "\n")
 # functions 
 ######################################################################################
 
-if(INLA_log) {
-   doit.inla <- function(y.bin, Xi, G, Z.func, maf, gene){
+if(BMRV_log) {
+   
+   doit.bmrv<- function(y.bin, Xi, G, maf, gene){
+  
+      test.ex.temp <- hbmr_bin(pheno=y.bin,geno=as.matrix(G), cov=as.matrix(Xi), maf=maf)
+      return(test.ex.temp)
+   } 
+   
+   test.bmrv.logit <- function(gene, mutations, cases.samp, controls.samp, pop.mut, Xi, agg.col, pi){   
+      write(paste('starting to test gene: ',gene), file=paste('bmrv_perm',pi, sep='_'), sep = " ", append=T)
+      
+      if(nrow(mutations) > 0){
+         gene.col <- which( agg.col == colnames(mutations))
+         snpID.col <- which( '#snpID' == colnames(mutations))
+         #samp.start <- which(colnames(mutations) == '#LocalAF')+1
+         samp.cols <-  which(!grepl('#',colnames(mutations)))
+         df <- mutations[,c(gene.col,snpID.col,samp.cols)]
+         
+         G <- t(as.matrix(df[,-c(1:2)]))
+         #colnames(G) <-  df$snpID
+         G <- na.omit(G)
+         G <- G[,colSums(G, na.rm=T)!=0 , drop=FALSE]
+         G[G==2] <- 1
+         if(nrow(G)>0 && ncol(G)>0){          
+            cases.samp.nona <- which(rownames(G) %in% cases.samp)
+            cases.samp.nona <- rownames(G)[cases.samp.nona]
+            controls.samp.nona <- which(rownames(G) %in% controls.samp)
+            controls.samp.nona <- rownames(G)[controls.samp.nona]
+            tot.nona.cases <- length(cases.samp.nona)
+            tot.nona.controls <- length(controls.samp.nona)
+            
+            mut.total <- ncol(G)
+            mut.cases <- sum(colSums(as.matrix(G[cases.samp.nona , ,drop=F]), na.rm=T) !=0)
+            mut.controls <- sum(colSums(as.matrix(G[controls.samp.nona, ,drop=F]), na.rm=T) !=0)
+            num.cases <- sum(rowSums(as.matrix(G[cases.samp.nona , ,drop=F]), na.rm=T) !=0)
+            num.controls <- sum(rowSums(as.matrix(G[controls.samp.nona, ,drop=F]), na.rm=T) !=0)
+            
+            maf.df <- pop.mut[ colnames(G),]         
+            maf <- maf.df$`#LocalAF` + 0.00001
+            names(maf)  <- maf.df$`#snpID`
+            rm(maf.df)
+            
+            y.bin <- as.numeric(rownames(G) %in% cases.samp.nona)
+            
+            
+            Xi <- Xi[rownames(G),, drop=F]
+            
+            test.ex <- (try( doit.bmrv(y.bin, Xi, G, maf, gene), TRUE))
+            if(length(test.ex) >= 1){
+               bayes.factor <-  test.ex$BF  
+               p.val <-  test.ex$p_upper  
+            } else {
+               bayes.factor <-  NA 
+               p.val <-  NA
+            }
+         } else {
+            mut.total <- 0
+            mut.cases <- 0
+            mut.controls <- 0
+            num.cases <-0
+            num.controls <- 0
+            tot.nona.cases <- 0
+            tot.nona.controls <- 0
+            bayes.factor <-  NA 
+            p.val <-  NA
+         }
+         
+      } else {
+         mut.total <- 0
+         mut.cases <- 0
+         mut.controls <- 0
+         num.cases <-0
+         num.controls <- 0
+         tot.nona.cases <- length(cases.samp)
+         tot.nona.controls <-  length(controls.samp)
+         bayes.factor <-  NA 
+         p.val <-  NA
+         
+      }
+      
+      
+      return((c( total.mut=mut.total , cases.mut=mut.cases, controls.mut=mut.controls,
+                 num.cases=num.cases, num.controls=num.controls,                 
+                 no.na.cases=tot.nona.cases, no.na.controls=tot.nona.controls,
+                 bayes.factor=as.numeric(bayes.factor), p.val.overall=as.numeric(p.val)))) 
+   }
+   
+   perm.mc.bmrv <- function (genes.all, mutations.per, cases.samples, controls.samples.per, pop.mut.df.per, X.per, agg.col, pi) {
+      write('starting for this permutation!', file=paste('bmrv_perm',pi, sep='_'), sep = "\t", append=T)
+      
+      df <- sapply(genes.all, function(x) test.bmrv.logit(x, mutations.per[mutations.per[,agg.col]==x,],
+                                                          cases.samples,controls.samples.per,
+                                                          pop.mut.df.per, X.per , agg.col,pi))
+      
+      write('Done with this permutation!', file=paste('bmrv_perm',pi, sep='_'), sep = "\t", append=T)
+      
+      df.temp <- as.data.frame(t(df))
+      
+      #df.temp <- data.frame(df.temp)
+      
+      colnames(df.temp) <- paste(colnames(df.temp), '_perm',pi, sep='')
+      
+      write('going out of perm.mc.bmrv function!', file=paste('bmrv_perm',pi, sep='_'), sep = "\t", append=T)
+      
+      return(df.temp)
+      
+   }
+   
+}
+
+####
+
+if(BATI_log) {
+   doit.bati <- function(y.bin, Xi, G, Z.func, maf, gene,in.mc){
       M <- cbind(as.matrix(Xi),G%*%as.matrix(Z.func))
       #Qz <- diag(dbeta(maf, weight.beta[1], weight.beta[2])^2)
       if(maf.log){
@@ -215,18 +347,25 @@ if(INLA_log) {
       Z <- G #%*%as.matrix(Z.func)
       formula <- Y ~ -1 + as.matrix(M) + f(id.z, model="z",  Z=Z) #Cmatrix=Qz,
       result <- inla(formula, family = "logistic", data = list(Y=Y, id.z=1:n, M=M),
-                     control.compute=list(dic=T,cpo=TRUE,config=TRUE),num.threads=1,
+                     control.compute=list(dic=T,cpo=TRUE,config=TRUE),num.threads=in.mc,
                      control.inla=list( h=h.step))
-      #result2 <- inla(formula, family = "binomial", data = list(Y=Y, id.z=1:n, M=M),control.compute=list(dic=T,cpo=TRUE,config=TRUE),num.threads=1)
-      #save(result,file=paste0(gene, '_logistic.RData'))
-      #save(result2,file=paste0(gene, '_binomial.RData'))
+      if(save.model==T){   
+        result2 <- inla(formula, family = "binomial", data = list(Y=Y, id.z=1:n, M=M),control.compute=list(dic=T,cpo=TRUE,config=TRUE),
+                        num.threads=in.mc, control.inla=list( h=h.step))
+        save(result,file=paste0(gene, '_logistic.RData'))
+        save(result2,file=paste0(gene, '_binomial.RData'))
+      }
       
       result.null <- inla(formula.null,family = "logistic",  data = list(Y=Y, id.z=1:n, M=as.matrix(Xi) ),
-                          control.compute=list(dic=T,cpo=TRUE,config=TRUE), num.threads=1,
+                          control.compute=list(dic=T,cpo=TRUE,config=TRUE), num.threads=in.mc,
                           control.inla=list( h=h.step))
-      #result2.null <- inla(formula.null,family = "binomial",  data = list(Y=Y, id.z=1:n, M=as.matrix(Xi) ),control.compute=list(dic=T,cpo=TRUE,config=TRUE), num.threads=1)
-      #save(result.null,file=paste0(gene, '_logistic_null.RData'))
-      #save(result2.null,file=paste0(gene, '_binomial_null.RData'))
+      if(save.model==T){   
+        result2.null <- inla(formula.null,family = "binomial",  data = list(Y=Y, id.z=1:n, M=as.matrix(Xi)),
+                             control.compute=list(dic=T,cpo=TRUE,config=TRUE), num.threads=in.mc,  control.inla=list( h=h.step))
+        save(result.null,file=paste0(gene, '_logistic_null.RData'))
+        save(result2.null,file=paste0(gene, '_binomial_null.RData'))
+      }
+      
       
       dic.diff.dic <- result.null$dic$dic - result$dic$dic 
       cpo.diff.cpo <- -mean(log(result.null$cpo$cpo[result.null$cpo$cpo>0]),na.rm=T) - ( -mean(log(result$cpo$cpo[result$cpo$cpo>0]),na.rm=T) ) 
@@ -242,8 +381,8 @@ if(INLA_log) {
       return(test.ex.temp)
    } 
    
-   test.inla.logit <- function(gene, mutations, cases.samp, controls.samp, pop.mut, Xi, numeric.var, dummy.var, agg.col, pi){   
-      write(paste('starting to test gene: ',gene), file=paste('inla_perm',pi, sep='_'), sep = " ", append=T)
+   test.bati.logit <- function(gene, mutations, cases.samp, controls.samp, pop.mut, Xi, numeric.var, dummy.var, agg.col, pi, in.mc){   
+      write(paste('starting to test gene: ',gene), file=paste('bati_perm',pi, sep='_'), sep = " ", append=T)
       
       if(nrow(mutations) > 0){
          gene.col <- which( agg.col == colnames(mutations))
@@ -299,7 +438,7 @@ if(INLA_log) {
             
             Xi <- Xi[rownames(G),, drop=F]
             
-            test.ex <- (try( doit.inla(y.bin, Xi, G, Z.func, maf, gene), TRUE))
+            test.ex <- (try( doit.bati(y.bin, Xi, G, Z.func, maf, gene, in.mc), TRUE))
             #print(test.ex)
             dic.diff <-  as.numeric(test.ex[1])
             cpo.diff <-  as.numeric(test.ex[length(test.ex)])
@@ -335,14 +474,14 @@ if(INLA_log) {
                  dic.diff=dic.diff, cpo.diff=cpo.diff ))     ) 
    }
    
-   perm.mc.inla <- function (genes.all, mutations.per, cases.samples, controls.samples.per, pop.mut.df.per, X.per, col.snps.numeric, col.snps.dummy, agg.col, pi) {
-      write('starting for this permutation!', file=paste('inla_perm',pi, sep='_'), sep = "\t", append=T)
+   perm.mc.bati <- function (genes.all, mutations.per, cases.samples, controls.samples.per, pop.mut.df.per, X.per, col.snps.numeric, col.snps.dummy, agg.col, pi, in.mc) {
+      write('starting for this permutation!', file=paste('bati_perm',pi, sep='_'), sep = "\t", append=T)
       
-      df <- sapply(genes.all, function(x) test.inla.logit(x, mutations.per[mutations.per[,agg.col]==x,],
+      df <- sapply(genes.all, function(x) test.bati.logit(x, mutations.per[mutations.per[,agg.col]==x,],
                                                           cases.samples,controls.samples.per,
-                                                          pop.mut.df.per, X.per, col.snps.numeric, col.snps.dummy, agg.col,pi))
+                                                          pop.mut.df.per, X.per, col.snps.numeric, col.snps.dummy, agg.col,pi, in.mc))
       
-      write('Done with this permutation!', file=paste('inla_perm',pi, sep='_'), sep = "\t", append=T)
+      write('Done with this permutation!', file=paste('bati_perm',pi, sep='_'), sep = "\t", append=T)
       
       df.temp <- as.data.frame(t(df))
       
@@ -350,7 +489,7 @@ if(INLA_log) {
       
       colnames(df.temp) <- paste(colnames(df.temp), '_perm',pi, sep='')
       
-      write('going out of perm.mc.inla function!', file=paste('inla_perm',pi, sep='_'), sep = "\t", append=T)
+      write('going out of perm.mc.bati function!', file=paste('bati_perm',pi, sep='_'), sep = "\t", append=T)
       
       return(df.temp)
       
@@ -1087,7 +1226,7 @@ mutations.df <- mutations.df[rowSums(mutations.df[,samples.cols], na.rm=T)!=0 ,]
 
 # chooce number of permutations for selecting cases and AF samples
 if (read.from=='bash'){
-   permut <- as.integer(Sys.getenv("R_PERMUTATIONS", 100L))    
+   permut <- as.integer(Sys.getenv("R_PERMUTATIONS", 1L))    
    if ( permut < 1){
       stop("You should have number of permutations larger then 0")  
    }
@@ -1342,7 +1481,7 @@ if (read.from=='bash'){
    rm(x)   
    rm(num.cols)   
 } else {
-   permut <- 100
+   permut <- 1
 }
 
 
@@ -1350,7 +1489,7 @@ if (read.from=='bash'){
 # Collapsing categoric column to dummy variable (for mist and and ina)
 #################################################################################
 
-if (MIST_log | INLA_log){
+if (MIST_log | BATI_log){
    cat("\n ---------------------------------------------------------------------------------------------\n")
    cat("\n --------------------------- Random part variables, for mutations ----------------------------\n")
    cat("\n --------------------- Numeric and Dummy variable selection and grouping ---------------------\n")
@@ -1530,9 +1669,20 @@ same.perm <- FALSE
 af.samples <- list()
 controls.samples <- list()
 pop.mut.df <- list()  
+if(permut ==1 ){
+   in.mc <- mc
+   mc <- 1
+} else {
+   in.mc <- 1
+}
+cat(paste0('Inla will use number of cores: ',in.mc,'\n'), file=logFile, append=TRUE, sep = "\n")
+
 
 for (p in 1:ceiling(permut/mc)){
    pp <- ((p-1)*mc+1):(p*mc)
+   if (permut==1){
+      pp <- 1
+   }
    cat("\nPermutaion number:",pp,"!\n.....")
    # split controls- for local AF estimation
    if (p==1 | !same.perm ){
@@ -1657,79 +1807,25 @@ for (p in 1:ceiling(permut/mc)){
    }
    #save.image('temp.3.Rdata')
    
-   ##############################################################################################
-   # INLA
-   ##############################################################################################      
-   
-   if(INLA_log){
-      cat("\n Starting test inla!\n.....")
-      df.perm.inla <- mclapply(pp, function(pi) perm.mc.inla(genes.all, mutations.dam[[pi]],
-                                                             cases.samples, controls.samples[[pi]],
-                                                             pop.mut.df[[pi]], X[[pi]], 
-                                                             col.snps.numeric, col.snps.dummy, agg.col, pi), mc.cores=mc)
-      
-      
-      
-      if (p == 1 ){
-         df.all.inla <- Reduce(merge, lapply(df.perm.inla, function(x) data.frame(x, genes = row.names(x))))      
-         
-         
-         cc <- as.numeric(grep('^dic.diff_', colnames(df.all.inla) ))
-         if (length(cc)>1 ){
-            df.all.inla2 <- df.all.inla[order(rowMeans(df.all.inla[,cc], na.rm=T), decreasing=T),]
-         } else {
-            df.all.inla2 <- df.all.inla[order(df.all.inla[,cc], decreasing=T),]
-         }
-         
-         #head(df.all.inla2)
-         out.file <- unlist(strsplit(mutation.file, '/'))
-         #out.file <- "INLA"
-         out.file <- out.file[length(out.file)]
-         
-         out.file <- paste('INLA_logistic_results_AF',af.thr,'_Genes_',length(genes.all),'_perm',p*mc,'_',out.file,sep='')
-         write.table(df.all.inla2, file=out.file, row.names=F, sep='\t', quote=F)
-         rm(df.all.inla2)
-         out.file.old.inla <- out.file
-      } else {
-         df.temp <- Reduce(merge, lapply(df.perm.inla, function(x) data.frame(x, genes = row.names(x))))  
-         df.all.inla <- merge(x=df.all.inla, y=df.temp, by="genes", all=T)   
-         rm(df.temp)
-         
-         cc <- as.numeric(grep('^cpo.diff_', colnames(df.all.inla) ))
-         if (length(cc)>1 ){
-            df.all.inla2 <- df.all.inla[order(rowMeans(df.all.inla[,cc], na.rm=T), decreasing=T),]
-         } else {
-            df.all.inla2 <- df.all.inla[order(df.all.inla[,cc], decreasing=T),]
-         }
-         
-         #head(df.all.inla2)
-         out.file <- unlist(strsplit(mutation.file, '/'))
-         out.file <- out.file[length(out.file)]
-         
-         out.file <- paste('INLA_logistic_results_AF',af.thr,'_Genes_',length(genes.all),'_perm',p*mc,'_',out.file,sep='')
-         write.table(df.all.inla2, file=out.file, row.names=F, sep='\t', quote=F)
-         rm(df.all.inla2)
-         
-         system(paste0('rm ',out.file.old.inla) )
-         out.file.old.inla <- out.file
-      }
-      
-      mclapply(pp, function(pi) system(paste('rm inla_perm',pi, sep='_')), mc.cores=mc)
-      
-      
-   }
-   
-   
+
    ##############################################################################################
    # MIST
    ##############################################################################################      
    
    if(MIST_log){
       cat("\n Starting test mist!\n.....")
-      df.perm.mist <- mclapply(pp, function(pi) perm.mc.mist(genes.all, mutations.dam[[pi]],
+      tt <- timestamp(quiet=T)
+      cat(paste0("Start MiST time: ", tt), file=logFile, append=TRUE, sep = "\n")      
+      
+      sys.t <- system.time(df.perm.mist <- mclapply(pp, function(pi) perm.mc.mist(genes.all, mutations.dam[[pi]],
                                                              cases.samples, controls.samples[[pi]],
                                                              pop.mut.df[[pi]], X[[pi]], 
-                                                             col.snps.numeric, col.snps.dummy, agg.col, pi), mc.cores=mc)
+                                                             col.snps.numeric, col.snps.dummy, agg.col, pi), mc.cores=mc))
+      
+      cat(paste0("System time for MiST: "), file=logFile, append=TRUE, sep = "\n")   
+      cat(paste(names(sys.t),sys.t, sep=': ',collapse=' \n'), file=logFile, append=TRUE, sep = "\n")         
+      tt <- timestamp(quiet=T)
+      cat(paste0("End MiST time: ", tt), file=logFile, append=TRUE, sep = "\n")      
       
       if (p == 1 ){
          df.all.mist <- Reduce(merge, lapply(df.perm.mist, function(x) data.frame(x, genes = row.names(x))))      
@@ -1777,17 +1873,25 @@ for (p in 1:ceiling(permut/mc)){
       mclapply(pp, function(pi) system(paste('rm mist_perm',pi, sep='_')), mc.cores=mc)
       
    }
-   
+   cat('----------------------------------------------------------------', file=logFile, append=TRUE, sep = "\n")      
    
    ##############################################################################################
    # SKAT-O
    ##############################################################################################
    
    if(SKATO_log){
-      cat("\n Starting skato!\n.....")
-      df.perm.skato <- mclapply(pp, function(pi) perm.mc.skato(genes.all, mutations.dam[[pi]],
+      cat("\n Starting skat-o!\n.....")
+      tt <- timestamp(quiet=T)
+      cat(paste0("Start SKAT-O time: ", tt), file=logFile, append=TRUE, sep = "\n")      
+      
+      sys.t <- system.time(df.perm.skato <- mclapply(pp, function(pi) perm.mc.skato(genes.all, mutations.dam[[pi]],
                                                                cases.samples, controls.samples[[pi]],
-                                                               pop.mut.df[[pi]], X[[pi]], agg.col, pi), mc.cores=mc)
+                                                               pop.mut.df[[pi]], X[[pi]], agg.col, pi), mc.cores=mc))
+      
+      cat(paste0("System time for SKAT-O: "), file=logFile, append=TRUE, sep = "\n")   
+      cat(paste(names(sys.t),sys.t, sep=': ',collapse=' \n'), file=logFile, append=TRUE, sep = "\n")         
+      tt <- timestamp(quiet=T)
+      cat(paste0("End SKAT-O time: ", tt), file=logFile, append=TRUE, sep = "\n")      
       
       if (p == 1 ){
          df.all.skato <- Reduce(merge, lapply(df.perm.skato, function(x) data.frame(x, genes = row.names(x))))      
@@ -1805,7 +1909,7 @@ for (p in 1:ceiling(permut/mc)){
          #out.file <- "SKAT_O"
          out.file <- out.file[length(out.file)]
          
-         out.file <- paste('SKAT_O_results_AF',af.thr,'_Genes_',length(genes.all),'_perm',p*mc,'_',out.file,sep='')
+         out.file <- paste('SKAT-O_results_AF',af.thr,'_Genes_',length(genes.all),'_perm',p*mc,'_',out.file,sep='')
          write.table(df.all.skato2, file=out.file, row.names=F, sep='\t', quote=F)
          rm(df.all.skato2)
          out.file.old.skato <- out.file
@@ -1825,7 +1929,7 @@ for (p in 1:ceiling(permut/mc)){
          out.file <- unlist(strsplit(mutation.file, '/'))
          out.file <- out.file[length(out.file)]
          
-         out.file <- paste('SKAT_O_results_AF',af.thr,'_Genes_',length(genes.all),'_perm',p*mc,'_',out.file,sep='')
+         out.file <- paste('SKAT-O_results_AF',af.thr,'_Genes_',length(genes.all),'_perm',p*mc,'_',out.file,sep='')
          write.table(df.all.skato2, file=out.file, row.names=F, sep='\t', quote=F)
          rm(df.all.skato2)
          
@@ -1835,6 +1939,7 @@ for (p in 1:ceiling(permut/mc)){
       mclapply(pp, function(pi) system(paste('rm skat0_perm',pi, sep='_')), mc.cores=mc)
       
    }
+   cat('----------------------------------------------------------------', file=logFile, append=TRUE, sep = "\n")      
    
    ##############################################################################################
    # BURDEN-O
@@ -1842,9 +1947,16 @@ for (p in 1:ceiling(permut/mc)){
    
    if(BURDEN_log){
       cat("\n Starting burden!\n.....")
-      df.perm.burden <- mclapply(pp, function(pi) perm.mc.burden(genes.all, mutations.dam[[pi]],
+      tt <- timestamp(quiet=T)
+      cat(paste0("Start BURDEN time: ", tt), file=logFile, append=TRUE, sep = "\n")      
+      
+      sys.t <- system.time(df.perm.burden <- mclapply(pp, function(pi) perm.mc.burden(genes.all, mutations.dam[[pi]],
                                                                  cases.samples, controls.samples[[pi]],
-                                                                 pop.mut.df[[pi]], X[[pi]], agg.col, pi), mc.cores=mc)
+                                                                 pop.mut.df[[pi]], X[[pi]], agg.col, pi), mc.cores=mc))
+      cat(paste0("System time for BURDEN: "), file=logFile, append=TRUE, sep = "\n")   
+      cat(paste(names(sys.t),sys.t, sep=': ',collapse=' \n'), file=logFile, append=TRUE, sep = "\n")         
+      tt <- timestamp(quiet=T)
+      cat(paste0("End BURDEN: ", tt), file=logFile, append=TRUE, sep = "\n")      
       
       if (p == 1 ){
          df.all.burden <- Reduce(merge, lapply(df.perm.burden, function(x) data.frame(x, genes = row.names(x))))      
@@ -1892,7 +2004,7 @@ for (p in 1:ceiling(permut/mc)){
       mclapply(pp, function(pi) system(paste('rm burden_perm',pi, sep='_')), mc.cores=mc)
       
    }   
-   
+   cat('----------------------------------------------------------------', file=logFile, append=TRUE, sep = "\n")      
    
    ##############################################################################################
    # KBAC
@@ -1900,9 +2012,16 @@ for (p in 1:ceiling(permut/mc)){
    
    if(KBAC_log) {
       cat("\n Starting kbac!\n.....")
-      df.perm.kbac <- mclapply(pp, function(pi) perm.mc.kbac(genes.all, mutations.dam[[pi]],
+      tt <- timestamp(quiet=T)
+      cat(paste0("Start KBAC time: ", tt), file=logFile, append=TRUE, sep = "\n")      
+      
+      sys.t <- system.time(df.perm.kbac <- mclapply(pp, function(pi) perm.mc.kbac(genes.all, mutations.dam[[pi]],
                                                              cases.samples, controls.samples[[pi]],
-                                                             pop.mut.df[[pi]], X[[pi]], agg.col, pi), mc.cores=mc)
+                                                             pop.mut.df[[pi]], X[[pi]], agg.col, pi), mc.cores=mc))
+      cat(paste0("System time for KBAC: "), file=logFile, append=TRUE, sep = "\n")   
+      cat(paste(names(sys.t),sys.t, sep=': ',collapse=' \n'), file=logFile, append=TRUE, sep = "\n")         
+      tt <- timestamp(quiet=T)
+      cat(paste0("End KBAC: ", tt), file=logFile, append=TRUE, sep = "\n")      
       
       if (p == 1 ){
          df.all.kbac <- Reduce(merge, lapply(df.perm.kbac, function(x) data.frame(x, genes = row.names(x))))      
@@ -1951,6 +2070,147 @@ for (p in 1:ceiling(permut/mc)){
       mclapply(pp, function(pi) system(paste('rm kbac_perm',pi, sep='_')), mc.cores=mc)
       
    }
+   cat('----------------------------------------------------------------', file=logFile, append=TRUE, sep = "\n")      
+   
+   ##############################################################################################
+   # BATI
+   ##############################################################################################      
+   
+   if(BATI_log){
+      cat("\n Starting test bati!\n.....")
+      tt <- timestamp(quiet=T)
+      cat(paste0("Start BATI time: ", tt), file=logFile, append=TRUE, sep = "\n")      
+      
+      sys.t <- system.time(df.perm.bati <- mclapply(pp, function(pi) perm.mc.bati(genes.all, mutations.dam[[pi]],
+                                                             cases.samples, controls.samples[[pi]],
+                                                             pop.mut.df[[pi]], X[[pi]], 
+                                                             col.snps.numeric, col.snps.dummy, agg.col, pi, in.mc), mc.cores=mc))    
+      cat(paste0("System time for BATI: "), file=logFile, append=TRUE, sep = "\n")   
+      cat(paste(names(sys.t),sys.t, sep=': ',collapse=' \n'), file=logFile, append=TRUE, sep = "\n")         
+      tt <- timestamp(quiet=T)
+      cat(paste0("End BATI: ", tt), file=logFile, append=TRUE, sep = "\n")      
+      
+      if (p == 1 ){
+         df.all.bati <- Reduce(merge, lapply(df.perm.bati, function(x) data.frame(x, genes = row.names(x))))      
+         
+         
+         cc <- as.numeric(grep('^dic.diff_', colnames(df.all.bati) ))
+         if (length(cc)>1 ){
+            df.all.bati2 <- df.all.bati[order(rowMeans(df.all.bati[,cc], na.rm=T), decreasing=T),]
+         } else {
+            df.all.bati2 <- df.all.bati[order(df.all.bati[,cc], decreasing=T),]
+         }
+         
+         #head(df.all.bati2)
+         out.file <- unlist(strsplit(mutation.file, '/'))
+         #out.file <- "BATI"
+         out.file <- out.file[length(out.file)]
+         
+         out.file <- paste('BATI_results_AF',af.thr,'_Genes_',length(genes.all),'_perm',p*mc,'_',out.file,sep='')
+         write.table(df.all.bati2, file=out.file, row.names=F, sep='\t', quote=F)
+         rm(df.all.bati2)
+         out.file.old.bati <- out.file
+      } else {
+         df.temp <- Reduce(merge, lapply(df.perm.bati, function(x) data.frame(x, genes = row.names(x))))  
+         df.all.bati <- merge(x=df.all.bati, y=df.temp, by="genes", all=T)   
+         rm(df.temp)
+         
+         cc <- as.numeric(grep('^dic.diff_', colnames(df.all.bati) ))
+         if (length(cc)>1 ){
+            df.all.bati2 <- df.all.bati[order(rowMeans(df.all.bati[,cc], na.rm=T), decreasing=T),]
+         } else {
+            df.all.bati2 <- df.all.bati[order(df.all.bati[,cc], decreasing=T),]
+         }
+         
+         #head(df.all.bati2)
+         out.file <- unlist(strsplit(mutation.file, '/'))
+         out.file <- out.file[length(out.file)]
+         
+         out.file <- paste('BATI_results_AF',af.thr,'_Genes_',length(genes.all),'_perm',p*mc,'_',out.file,sep='')
+         write.table(df.all.bati2, file=out.file, row.names=F, sep='\t', quote=F)
+         rm(df.all.bati2)
+         
+         system(paste0('rm ',out.file.old.bati) )
+         out.file.old.bati <- out.file
+      }
+      
+      mclapply(pp, function(pi) system(paste('rm bati_perm',pi, sep='_')), mc.cores=mc)
+      
+      
+   }
+   cat('----------------------------------------------------------------', file=logFile, append=TRUE, sep = "\n")      
+   
+   ##############################################################################################
+   # BMRV
+   ##############################################################################################      
+   
+   if(BMRV_log){
+      cat("\n Starting test BMRV!\n.....")
+      tt <- timestamp(quiet=T)
+      cat(paste0("Start BMRV time: ", tt), file=logFile, append=TRUE, sep = "\n")      
+      
+      sys.t <- system.time(df.perm.bmrv <- mclapply(pp, function(pi) perm.mc.bmrv(genes.all, mutations.dam[[pi]],
+                                                                                  cases.samples, controls.samples[[pi]],
+                                                                                  pop.mut.df[[pi]], X[[pi]], 
+                                                                                  agg.col, pi), mc.cores=mc))    
+      cat(paste0("System time for BMRV: "), file=logFile, append=TRUE, sep = "\n")   
+      cat(paste(names(sys.t),sys.t, sep=': ',collapse=' \n'), file=logFile, append=TRUE, sep = "\n")         
+      tt <- timestamp(quiet=T)
+      cat(paste0("End BMRV: ", tt), file=logFile, append=TRUE, sep = "\n")      
+      #cat(paste0("p:", p), file=logFile, append=TRUE, sep = "\n")      
+      
+      if (p == 1 ){
+         
+         df.all.bmrv <- Reduce(merge, lapply(df.perm.bmrv, function(x) data.frame(x, genes = row.names(x))))      
+         
+         
+         cc <- as.numeric(grep('^bayes.factor_', colnames(df.all.bmrv) ))
+         cc2 <- as.numeric(grep('^p.val.overall_', colnames(df.all.bmrv) ))
+         if (length(cc)>1 ){
+            df.all.bmrv2 <- df.all.bmrv[order(rowMeans(df.all.bmrv[,cc], na.rm=T), decreasing=T),]
+         } else {
+            df.all.bmrv2 <- df.all.bmrv[order(df.all.bmrv[,cc], -df.all.bmrv[,cc2], decreasing=T),]
+         }
+         
+         #head(df.all.bmrv2)
+         out.file <- unlist(strsplit(mutation.file, '/'))
+         #out.file <- "BMRV"
+         out.file <- out.file[length(out.file)]
+         
+         out.file <- paste('BMRV_results_AF',af.thr,'_Genes_',length(genes.all),'_perm',p*mc,'_',out.file,sep='')
+         write.table(df.all.bmrv2, file=out.file, row.names=F, sep='\t', quote=F)
+         rm(df.all.bmrv2)
+         out.file.old.bmrv <- out.file
+      } else {
+         df.temp <- Reduce(merge, lapply(df.perm.bmrv, function(x) data.frame(x, genes = row.names(x))))  
+         df.all.bmrv <- merge(x=df.all.bmrv, y=df.temp, by="genes", all=T)   
+         rm(df.temp)
+         
+         cc <- as.numeric(grep('^bayes.factor_', colnames(df.all.bmrv) ))
+         if (length(cc)>1 ){
+            df.all.bmrv2 <- df.all.bmrv[order(rowMeans(df.all.bmrv[,cc], na.rm=T), decreasing=T),]
+         } else {
+            df.all.bmrv2 <- df.all.bmrv[order(df.all.bmrv[,cc], decreasing=T),]
+         }
+         
+         #head(df.all.bmrv2)
+         out.file <- unlist(strsplit(mutation.file, '/'))
+         out.file <- out.file[length(out.file)]
+         
+         out.file <- paste('BMRV_results_AF',af.thr,'_Genes_',length(genes.all),'_perm',p*mc,'_',out.file,sep='')
+         write.table(df.all.bmrv2, file=out.file, row.names=F, sep='\t', quote=F)
+         rm(df.all.bmrv2)
+         
+         system(paste0('rm ',out.file.old.bmrv) )
+         out.file.old.bmrv <- out.file
+      }
+      
+      mclapply(pp, function(pi) system(paste('rm bmrv_perm',pi, sep='_')), mc.cores=mc)
+      
+      
+   }
+   cat('----------------------------------------------------------------', file=logFile, append=TRUE, sep = "\n")      
+   
    
    
 }
