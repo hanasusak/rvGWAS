@@ -1,10 +1,10 @@
-# REWAS
+# rvGWAS
 
 ---
 
-In this repository are sequence of R scripts to perform REWAS (Rare-variant Exome Wide Association Study). To perform this analysis you will need R and installed nessesary packages (from R console instructions):
+In this repository are sequence of R scripts to perform RVAS (Rare-variant Association Study). To perform this analysis you will need R and installed nessesary packages (from R console instructions):
 ```R
-install.packages(c("argparse", "ggplot2", "mixOmics","reshape2", "data.table", "MiST", "SKAT", "KBAC", "parallel"))
+install.packages(c("argparse", "ggplot2", "mixOmics","reshape2", "data.table", "MiST", "SKAT", "KBAC", "parallel", "BMRV"))
 ```
 
 ### Quality Control analysis
@@ -30,7 +30,7 @@ As database has restricted access, we recomand to just provide following:
 This will cause script to get mappings from url link, which is bit slower but is only nessesary to do once.
 
 
-### Performing BURDEN, KBAC, SKAT-O, MiST, and INLA tests
+### Performing BURDEN, KBAC, SKAT-O, MiST, HBMR, and BATI tests
 Now you are ready to perform tests. Your input files are output files from previous steps:
 * VCF-like file with correcte HUGO names (output from Correct names script)
 * Samples info file with PCA components added (output from QC script)
@@ -46,7 +46,7 @@ We would recommand to running it for the first time with one or few permutations
 
 Reason to run many permutations is to ensure that you are filtering out frequent population specific SNPs or indels (not present at high frequency at EVS of 1000 genome project) if you have more then enough controls (controls have to be well mached to cases and good representation of population, no much mixture). If you would calculate AF on whole set of controls and filter based on this AF, you would bias your results as you would use same contorls samples for estimating AF and for testing in variant associaition tests.  
 
-For more information how to run this REWAS testing script type at your terminal:
+For more information how to run this RVAS testing script type at your terminal:
 ```Shell
 Rscript RVAS_tests_prec.R --h
 ```
