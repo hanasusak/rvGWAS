@@ -1,5 +1,9 @@
 # rvGWAS
 
+This pipeline is developed by Hana Susak<sup>1</sup>, with contribution of Georgia Escaramis<sup>1,2</sup>
+1. Centre for Genomic Regulation (CRG)
+2. Biomedical Research Networking Centres in Epidemiology and Public Health (CIBERESP)
+
 ---
 
 In this repository are sequence of R scripts to perform RVAS (Rare-variant Association Study). To perform this analysis you will need R and installed nessesary packages (from R console instructions):
