@@ -3,7 +3,7 @@
 # Authors: Hana SUSAK, Georgia ESCARAMIS 
 # date: 25/06/2018
 #------------------------------------------------------------------------------------
-# SKAT-O, MiST and KBAC test, with or without permutations for controls
+# BURDEN, KBAC, SKAT-O, MiST, HBMR and BATI test, with or without permutations for controls
 #------------------------------------------------------------------------------------
 #----------------------------------------------------------------------------------
 # Calling the script: Rscript germline_risk_test_v2.R --h
@@ -78,7 +78,7 @@ if (read.from=='bash'){
       cat("\nDo you want to save BATI models (as R objects) (T for yes, F for no):")
       save.model <-scan(read.from,what=logical(),nmax=1,quiet=TRUE, nlines=1)
    }
-   cat("\nDo you want to run BMRV (T for yes, F for no): ")
+   cat("\nDo you want to run HBMR (T for yes, F for no): ")
    BMRV_log <- scan(read.from,what=logical(),nmax=1,quiet=TRUE, nlines=1) 
  
 } else {
