@@ -66,8 +66,6 @@ if (read.from=='bash'){
    cat("\nDo you want to run BURDEN (T for yes, F for no): ")
    BURDEN_log <- scan(read.from,what=logical(),nmax=1,quiet=TRUE, nlines=1) 
    cat("\nDo you want to run BATI (T for yes, F for no): ")
-   cat("\nDo you want to run HBMR (T for yes, F for no): ")
-   BMRV_log <- scan(read.from,what=logical(),nmax=1,quiet=TRUE, nlines=1) 
    BATI_log <- scan(read.from,what=logical(),nmax=1,quiet=TRUE, nlines=1)
    if (BATI_log ){
       cat("\nDo you want to use maf as variable for mutations, transformed wit beta dist.(T for yes, F for no): ")
@@ -80,6 +78,8 @@ if (read.from=='bash'){
       cat("\nDo you want to save BATI models (as R objects) (T for yes, F for no):")
       save.model <-scan(read.from,what=logical(),nmax=1,quiet=TRUE, nlines=1)
    }
+   cat("\nDo you want to run HBMR (T for yes, F for no): ")
+   BMRV_log <- scan(read.from,what=logical(),nmax=1,quiet=TRUE, nlines=1) 
    
 } else {
    mc <- as.integer(1L) 
