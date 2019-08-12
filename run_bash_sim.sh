@@ -47,6 +47,8 @@ export MAF_LOGICAL='F'
 echo $MAF_LOGICAL
 export H_STEP= 0.001
 echo $H_STEP
+export R_BATI_SAVE='F'
+echo $R_BATI_SAVE
 
 ## column names in samples file to be used as covariates
 export R_COV_MAT_COLS='PC1, PC2, PC3, PC4, PC5, PC6, PC7, PC8, PC9'
