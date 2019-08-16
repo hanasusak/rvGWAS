@@ -1238,7 +1238,7 @@ if (read.from=='bash'){
    if(filt.char){
       filt.char.col <- trimws(unlist(strsplit(filt.char.col, '\\|')))
       filt.char.val <- trimws(unlist(strsplit(filt.char.val, '\\|')))
-      filt.char.val <- sapply(filt.char.val, function(x) trimws(unlist(strsplit(x, ','))))
+      filt.char.val <- lapply(filt.char.val, function(x) trimws(unlist(strsplit(x, ','))))
       if(length(filt.char.col)==length(filt.char.val)){
          names(filt.char.val) <- filt.char.col
       } else {
