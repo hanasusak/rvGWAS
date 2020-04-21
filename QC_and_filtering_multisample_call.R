@@ -687,9 +687,13 @@ rm(x.col)
 for(i in 1:ceiling(nrow(mut.all)/100000)){
    max.row <- min((i*100000),nrow(mut.all)) 
    #print(max.row)
-   melt.mut.all.temp <- melt(mut.all[((i-1)*100000+1):max.row,c(cc,samples.cols)], 
-                             id.vars=c(  "#snpID",col.snps.nar))
-   melt.mut.all.temp <- melt.mut.all.temp[melt.mut.all.temp$value != 0 & !is.na(melt.mut.all.temp$value),]
+   if (exists('col.snps.nar')){
+      melt.mut.all.temp <- melt(mut.all[((i-1)*100000+1):max.row,c(cc,samples.cols)], id.vars=c("#snpID", col.snps.nar))
+      melt.mut.all.temp <- melt.mut.all.temp[melt.mut.all.temp$value != 0 & !is.na(melt.mut.all.temp$value),]
+   } else {
+      melt.mut.all.temp <- melt(mut.all[((i-1)*100000+1):max.row,c(cc,samples.cols)], id.vars=c("#snpID"))
+      melt.mut.all.temp <- melt.mut.all.temp[melt.mut.all.temp$value != 0 & !is.na(melt.mut.all.temp$value),]   
+   }
    if (i ==1){
       melt.mut.all <- melt.mut.all.temp
       rm(melt.mut.all.temp)
