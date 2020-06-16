@@ -1198,7 +1198,7 @@ if (read.from=='bash'){
 
 cat(paste0("Cases defined as: ", paste(cases.name, collapse=', '), " in column ",proj.col,
            " from file ", samples.info.file), file=logFile, append=TRUE, sep = "\n")
-cat(paste0("Cases defined as: ", paste(controls.name, collapse=', '), " in column ",proj.col,
+cat(paste0("Controls defined as: ", paste(controls.name, collapse=', '), " in column ",proj.col,
            " from file ", samples.info.file), file=logFile, append=TRUE, sep = "\n")
 
 
